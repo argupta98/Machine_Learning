@@ -15,21 +15,14 @@ from tensorflow.examples.tutorials.mnist import input_data
 #load data
 mnist=input_data.read_data_sets("/temp/data/", one_hot=True)
 
-#define global variables for neural net structure
-#hidden layers indexed by layer number, with value as num nodes in layer
-layers=[400,200,300]
-num_out=10
-layers.append(num_out)
-num_layers= len(layers)
-
-
 #placeholders for our X training data and y labels
 X = tf.placeholder("float", [None, 784])
-Y = tf.placeholder("float")
+y = tf.placeholder("float")
 
 #define the full model for the neural net for an arbitrary number of layers
-def nn_model(data):
+def nn_model(data, layers):
     #define layer dictionaries to keep together weights and biases, initialized to random
+    num_layers= len(layers)
     layer_list=[]
     num_prev_nodes=784
     for i in range(num_layers):
@@ -49,7 +42,36 @@ def nn_model(data):
     
     return current_compute
         
-           
-            
-#define the training session
 
+#define the training session
+def train_nn(data, layers, batch_size=100, iterations=10):
+    model=nn_model(data, layers)
+    #use cross entropy function for cost 
+    cost_func= tf.reduce_mean(tf.nn.softmax.cross_entropy_with_logits(logits=model, labels=y))
+    #Use AdamOptimizer to optimize cost func
+    optimizer = tf.train.AdamOptimizer().minimize(cost_func)
+    with tf.Session as sess:
+        sess.run(tf.initialize_all_variables())
+        #train model
+        for i in range(iterations):
+            loss=0
+            for _ in range(int(mnist.train.num_examples/batch_size)):
+                iter_X, iter_y=mnist.train.next_batch(batch_size)
+                sub_loss=sess.run([optimizer, cost_func], feed_dict={X:iter_X, y:iter_y})[1]
+                loss+=sub_loss
+            print('Iteration', i, 'of', iterations, 'loss: ', loss)
+            
+        #evaluate model
+        is_correct= tf.equal(tf.argmax(model, 1), tf.argmax(y,1))
+        accuracy = tf.reduce_mean(tf.cast(is_correct), "float")
+        print('Accuracy: ', accuracy.eval({X:mnist.test.images, y:mnist.test.labels}))
+        
+#define neuarl net architecture
+#hidden layers indexed by layer number, with value as num nodes in layer
+layers=[400,200,300]
+#10 numbers to classify
+num_out=10        
+#add on the last layer as an output layer
+layers.append(num_out)
+# run training session
+train_nn(X,layers)
